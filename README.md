@@ -33,3 +33,9 @@
 **Built:** a Next.js frontend. The home page has a form to raise a request and a table of every request with its status, priority and who raised it. An "Acting as" picker in the header replaces a login; it's remembered in the browser and sent with every API call. Next.js passes `/api/*` on to FastAPI, so the browser sees one origin and there's no CORS setup.
 
 **Decision:** pinned TypeScript to 5.9. The newest release is TypeScript 7, the rewrite in Go, and I'd rather not find out mid-build whether Next.js's type checking works with it yet.
+
+### Step 5: request page and audit log page
+
+**Built:** a page for each request with its details, a "Next step" panel and its full history. The panel only shows the buttons the current person may use, based on `allowed_actions` from the API, and otherwise says who the request is waiting for. When an approver opens a request they raised, it says another approver has to decide. The audit log page lists every event across all requests, newest first.
+
+**Decision:** the buttons are a convenience, not the rules. The API checks everything again, so someone calling it directly gets the same refusals. A Playwright test in Step 6 does exactly that.

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { api, type ServiceRequest } from "@/lib/api";
-import { CATEGORIES, categoryLabel, formatTime } from "@/lib/labels";
+import { CATEGORIES, categoryLabel, formatTime, PRIORITY_LABEL } from "@/lib/labels";
 import { useActingAs } from "./acting-as";
 import { StatusBadge } from "./status-badge";
 
@@ -67,7 +67,7 @@ function RequestTable({ requests }: { requests: ServiceRequest[] }) {
               <td>
                 <StatusBadge status={r.status} />
               </td>
-              <td>{r.priority ?? <span className="muted">not set</span>}</td>
+              <td>{r.priority ? PRIORITY_LABEL[r.priority] : <span className="muted">Not set</span>}</td>
               <td>{nameOf(r.requested_by)}</td>
               <td className="small">{formatTime(r.updated_at)}</td>
             </tr>
