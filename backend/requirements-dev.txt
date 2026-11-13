@@ -1,0 +1,4 @@
+# Running the tests needs these as well. The container image doesn't.
+-r requirements.txt
+pytest==9.1.1
+httpx2==2.13.0

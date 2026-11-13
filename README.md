@@ -83,10 +83,12 @@ npm run dev
 
 Then open http://127.0.0.1:3000 and use "Acting as" in the header to switch between Asha, Ravi, Meera and Tom. To use another database, set `DATABASE_URL`, for example `postgresql+psycopg://user@host:5432/serviceops`.
 
+Two endpoints are for whatever runs the app. `/api/health` says the process is alive. `/api/ready` also checks the database. [deploy-baseline](https://github.com/builtbyshailendra/deploy-baseline) runs this app in Docker and Kubernetes and uses both.
+
 ### Tests
 
 ```bash
-cd backend && pytest -q                                   # needs a database whose name ends in _test
+cd backend && pip install -r requirements-dev.txt && pytest -q   # needs a database whose name ends in _test
 cd frontend && npx playwright install chromium && npm run e2e
 ```
 
@@ -149,6 +151,14 @@ Built on 13 November 2026, one step at a time.
 **Built:** a GitHub Actions workflow with two jobs, each with its own PostgreSQL 16 container. One runs the backend tests. The other installs the frontend, type-checks it, builds it for production and runs the Playwright tests in Chromium.
 
 **Decision:** the CI database uses trust authentication instead of a password. The container lives only for the job and isn't reachable from outside, and it keeps a password, even a fake one, out of the repo.
+
+### Step 8: ready to run as more than one copy
+
+**Built:** two checks for whatever runs the app. `/api/health` only says the process is alive, and `/api/ready` also checks the database. Kubernetes restarts a copy that isn't healthy and stops sending traffic to one that isn't ready, so a database outage makes every copy not ready instead of restarting them all. The Python packages are now pinned to exact versions, and the test-only ones moved to `requirements-dev.txt`, so the container image doesn't carry pytest. The tests use `httpx2`, which Starlette now asks for. `BUILD_STANDALONE=1` builds the frontend as a self-contained server, for a smaller image.
+
+**What broke:** the app creates its tables when it starts. I started three copies at the same moment against an empty database, 20 times, and 40 of the 60 starts failed with `duplicate key value violates unique constraint`. They all saw no tables and all tried to create them. A PostgreSQL advisory lock now makes them take turns. The test for it fails without the lock and passes with it.
+
+**Learned:** Next.js reads `API_URL` when the app is built, not when it starts. The rewrite to the backend is written into the build output, so the address has to be right at build time.
 
 ## Next
 

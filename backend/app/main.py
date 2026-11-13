@@ -5,7 +5,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
 from app import workflow
@@ -45,8 +46,21 @@ def _find(session: Session, request_id: int, lock: bool = False) -> ServiceReque
     return request
 
 
+# Two checks, because they answer different questions.
+# Health: is the process alive? It doesn't touch the database, so a database
+# outage doesn't get every copy of the backend restarted at once.
+# Ready: can it serve requests right now? It needs the database.
 @app.get("/api/health")
 def health() -> dict:
+    return {"ok": True}
+
+
+@app.get("/api/ready")
+def ready(session: Session = Depends(get_session)) -> dict:
+    try:
+        session.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        raise HTTPException(503, "Can't reach the database") from None
     return {"ok": True}
 
 
