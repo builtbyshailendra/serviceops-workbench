@@ -83,7 +83,7 @@ npm run dev
 
 Then open http://127.0.0.1:3000 and use "Acting as" in the header to switch between Asha, Ravi, Meera and Tom. To use another database, set `DATABASE_URL`, for example `postgresql+psycopg://user@host:5432/serviceops`.
 
-Two endpoints are for whatever runs the app. `/api/health` says the process is alive. `/api/ready` also checks the database. [deploy-baseline](https://github.com/builtbyshailendra/deploy-baseline) runs this app in Docker and Kubernetes and uses both.
+Three endpoints are for whatever runs the app. `/api/health` says the process is alive. `/api/ready` also checks the database. `/metrics` serves Prometheus metrics: calls by route and status, response times, and how many requests are in each status. Next.js only forwards `/api/*`, so `/metrics` isn't reachable through the web app. [deploy-baseline](https://github.com/builtbyshailendra/deploy-baseline) runs this app in Docker and Kubernetes and uses both.
 
 ### Tests
 
@@ -159,6 +159,14 @@ Built on 13 November 2026, one step at a time.
 **What broke:** the app creates its tables when it starts. I started three copies at the same moment against an empty database, 20 times, and 40 of the 60 starts failed with `duplicate key value violates unique constraint`. They all saw no tables and all tried to create them. A PostgreSQL advisory lock now makes them take turns. The test for it fails without the lock and passes with it.
 
 **Learned:** Next.js reads `API_URL` when the app is built, not when it starts. The rewrite to the backend is written into the build output, so the address has to be right at build time.
+
+### Step 9: metrics for Prometheus
+
+**Built:** `/metrics` on the backend, in whichever format the caller asks for: OpenMetrics for Prometheus, plain text for `curl`. It counts calls by method, route and status, times them, and reports how many requests are in each status, counted in the database when Prometheus asks. Refused steps show up as `403` and `409` calls, so a dashboard can show how often the rules said no.
+
+**Decision:** calls are labelled with the route pattern, such as `/api/requests/{request_id}/{action}`, not the real path. With the real path, every new request id would add new time series forever. Unknown paths share one `unmatched` label for the same reason.
+
+**Learned:** every copy of the backend reports the same per-status numbers, because they all read the same database. A dashboard has to take the max across copies, not the sum.
 
 ## Next
 

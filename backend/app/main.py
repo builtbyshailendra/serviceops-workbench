@@ -9,7 +9,7 @@ from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, joinedload
 
-from app import workflow
+from app import metrics, workflow
 from app.db import create_schema, get_session
 from app.models import STATUSES, AuditEvent, ServiceRequest
 from app.people import PEOPLE, Person, acting_as
@@ -23,6 +23,8 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="serviceops-workbench", lifespan=lifespan)
+app.middleware("http")(metrics.record)
+app.add_api_route("/metrics", metrics.endpoint, include_in_schema=False)
 
 
 @app.exception_handler(workflow.WorkflowError)
