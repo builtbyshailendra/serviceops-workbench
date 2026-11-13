@@ -39,3 +39,11 @@
 **Built:** a page for each request with its details, a "Next step" panel and its full history. The panel only shows the buttons the current person may use, based on `allowed_actions` from the API, and otherwise says who the request is waiting for. When an approver opens a request they raised, it says another approver has to decide. The audit log page lists every event across all requests, newest first.
 
 **Decision:** the buttons are a convenience, not the rules. The API checks everything again, so someone calling it directly gets the same refusals. A Playwright test in Step 6 does exactly that.
+
+### Step 6: Playwright test for the happy path
+
+**Built:** one browser test that plays all four people: Asha raises a request, Ravi triages it, Meera approves it, Ravi marks it done, and the audit log shows the four events in order. A second test calls the API directly as Asha and checks that approving is refused with a clear reason. With `SCREENSHOTS=1` the first test also saves the screenshots used in this README.
+
+**What broke:** nothing in the app, but the first screenshots were ugly. The test put a timestamp in the request title to stay unique across runs, and the Next.js dev badge sat in the corner. The test now finds its request by id instead of by title, and the badge is switched off.
+
+**Decision:** the Chromium build already on my machine was older than the one this Playwright version expects. Instead of downloading another browser, the config reads `PW_CHANNEL`, so locally the test runs in Microsoft Edge. CI uses Playwright's own Chromium.
