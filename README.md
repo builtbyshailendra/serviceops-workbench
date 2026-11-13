@@ -1,10 +1,106 @@
 # serviceops-workbench
 
-**A service request goes from intake to a human-approved action, and every step is written to an audit trail.**
+[![ci](https://github.com/builtbyshailendra/serviceops-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/builtbyshailendra/serviceops-workbench/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/python-3.12-3776AB)
+![Next.js](https://img.shields.io/badge/next.js-16-000000)
+![PostgreSQL](https://img.shields.io/badge/postgresql-16-4169E1)
+![License](https://img.shields.io/badge/license-MIT-lightgrey)
+
+**A service request goes from intake to a human-approved action, and every step is written to an audit trail the database won't let anyone edit.**
 
 > Personal learning project. Every person, team and request here is made up.
 
+![A finished request with its history](docs/screenshots/3-done-with-history.png)
+
+## Why
+
+Plenty of internal work still runs on "send me an email and I'll sort it". Somebody asks for access, somebody else decides, a third person does the work, and months later nobody can say who approved what. The useful part isn't the form. It's making the approval explicit, refusing steps that skip it, and keeping a history you can trust.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[🧑 Asha<br/>raises a request] --> B((New))
+    B -- 🛠️ service desk<br/>triages, sets priority --> C((Triaged))
+    C -- ✅ approver<br/>approves --> D((Approved))
+    C -- ❌ approver<br/>rejects with a reason --> R((Rejected))
+    D -- 🛠️ service desk<br/>does the work --> E((Done))
+```
+
+| Layer | Where | What it does |
+|---|---|---|
+| Frontend | [`frontend/`](frontend) | Next.js. Intake form, request list, a page per request with its next step and history, and the audit log |
+| API | [`backend/app/main.py`](backend/app/main.py) | FastAPI. Creates requests, takes steps, returns history. Next.js forwards `/api/*` here |
+| Rules | [`backend/app/workflow.py`](backend/app/workflow.py) | The status flow as plain Python: who may take which step, from which status, and what it needs |
+| Database | [`backend/app/models.py`](backend/app/models.py) | PostgreSQL. Two tables, `CHECK` constraints for the key rules, and a trigger that makes the audit log append-only |
+
+### Who can do what
+
+| Step | From | Who | Needs | Records |
+|---|---|---|---|---|
+| Raise | | Anyone | Title and category | The request, as `new` |
+| Triage | New | Service desk | A priority | The priority |
+| Approve | Triaged | An approver who didn't raise it | | Who decided, and when |
+| Reject | Triaged | An approver who didn't raise it | A reason | Who decided, and when |
+| Complete | Approved | Service desk | A note on what was done | |
+
+Every step also writes an audit event in the same transaction. Anything the rules don't allow comes back with a reason in plain words, such as `Can't approve a request that is new. It has to be triaged first.`
+
+### Three layers of "no"
+
+1. **The page** only shows the buttons the current person may use.
+2. **The API** checks every rule again, so calling it directly doesn't get around them. Taking a step locks the request's row, so two approvers clicking at once are handled one after the other.
+3. **The database** refuses the worst mistakes even if the API had a bug: a decision without who and when, approving your own request, and any edit or delete in the audit log.
+
+## Screenshots
+
+| Raise a request | Waiting for approval |
+|---|---|
+| ![Intake form and request list](docs/screenshots/1-raised.png) | ![An approver's view of a triaged request](docs/screenshots/2-waiting-for-approval.png) |
+
+![Audit log](docs/screenshots/4-audit-log.png)
+
+These come from the Playwright test, so they show the app as the test left it.
+
+## Run it
+
+You need Python 3.12, Node.js 20 or newer, and PostgreSQL 14 or newer.
+
+```bash
+# 1. A throwaway PostgreSQL on port 5433 (set PG_BIN if its tools aren't on PATH)
+scripts/dev-postgres.sh start
+
+# 2. The API on port 8000
+cd backend
+pip install -r requirements.txt
+python -m uvicorn app.main:app --port 8000
+
+# 3. The web app on port 3000, in another terminal
+cd frontend
+npm install
+npm run dev
+```
+
+Then open http://127.0.0.1:3000 and use "Acting as" in the header to switch between Asha, Ravi, Meera and Tom. To use another database, set `DATABASE_URL`, for example `postgresql+psycopg://user@host:5432/serviceops`.
+
+### Tests
+
+```bash
+cd backend && pytest -q                                   # needs a database whose name ends in _test
+cd frontend && npx playwright install chromium && npm run e2e
+```
+
+The backend tests run against real PostgreSQL, because some rules live there. They drop and recreate every table, so they refuse to run unless the database name ends in `_test`. CI runs both suites on every push, each against a fresh PostgreSQL 16 container.
+
+## What it doesn't do
+
+- **No real login.** "Acting as" is a dropdown and the API trusts the header. A real version would put this behind single sign-on and read the person from a verified token.
+- **No migrations.** Tables are created on startup. Changing a table means resetting the database; Alembic is the next step for that.
+- **No notifications.** Nobody gets an email when a request is waiting for them.
+
 ## Build log
+
+Built on 13 November 2026, one step at a time.
 
 ### Step 1: requests table and intake API
 
@@ -47,3 +143,15 @@
 **What broke:** nothing in the app, but the first screenshots were ugly. The test put a timestamp in the request title to stay unique across runs, and the Next.js dev badge sat in the corner. The test now finds its request by id instead of by title, and the badge is switched off.
 
 **Decision:** the Chromium build already on my machine was older than the one this Playwright version expects. Instead of downloading another browser, the config reads `PW_CHANNEL`, so locally the test runs in Microsoft Edge. CI uses Playwright's own Chromium.
+
+### Step 7: CI and this README
+
+**Built:** a GitHub Actions workflow with two jobs, each with its own PostgreSQL 16 container. One runs the backend tests. The other installs the frontend, type-checks it, builds it for production and runs the Playwright tests in Chromium.
+
+**Decision:** the CI database uses trust authentication instead of a password. The container lives only for the job and isn't reachable from outside, and it keeps a password, even a fake one, out of the repo.
+
+## Next
+
+- Alembic migrations, so the schema can change without resetting the database
+- `deploy-baseline`: Docker images, one-command `docker compose`, and Kubernetes manifests with health checks for this app
+- A real login with single sign-on, reading the person from a verified token instead of a header
