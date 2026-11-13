@@ -7,6 +7,14 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 Category = Literal["access", "hardware", "software", "other"]
+Priority = Literal["low", "medium", "high"]
+
+
+class ActionIn(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    note: str = Field(default="", max_length=2000)
+    priority: Priority | None = None
 
 
 class RequestIn(BaseModel):
@@ -31,3 +39,5 @@ class RequestOut(BaseModel):
     decided_at: datetime | None
     created_at: datetime
     updated_at: datetime
+    # What the person in X-Acting-As could do next. Empty when no one is named.
+    allowed_actions: list[str] = []
