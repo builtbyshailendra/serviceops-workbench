@@ -19,15 +19,16 @@ class Step:
     from_status: str
     to_status: str
     role: str
+    past: str                   # how the audit log names it
     decision: bool = False      # records who decided and when
     note_needed: str = ""       # if set, the step needs a note, and this says why
 
 
 STEPS = {
-    "triage": Step("new", "triaged", SERVICE_DESK),
-    "approve": Step("triaged", "approved", APPROVER, decision=True),
-    "reject": Step("triaged", "rejected", APPROVER, decision=True, note_needed="Say why it's rejected"),
-    "complete": Step("approved", "done", SERVICE_DESK, note_needed="Say what was done"),
+    "triage": Step("new", "triaged", SERVICE_DESK, "triaged"),
+    "approve": Step("triaged", "approved", APPROVER, "approved", decision=True),
+    "reject": Step("triaged", "rejected", APPROVER, "rejected", decision=True, note_needed="Say why it's rejected"),
+    "complete": Step("approved", "done", SERVICE_DESK, "completed", note_needed="Say what was done"),
 }
 
 ROLE_WORDS = {

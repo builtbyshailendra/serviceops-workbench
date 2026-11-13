@@ -41,3 +41,17 @@ class RequestOut(BaseModel):
     updated_at: datetime
     # What the person in X-Acting-As could do next. Empty when no one is named.
     allowed_actions: list[str] = []
+
+
+class EventOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    request_id: int
+    request_title: str
+    action: str
+    actor: str
+    from_status: str | None
+    to_status: str
+    note: str
+    at: datetime

@@ -6,13 +6,13 @@ from contextlib import asynccontextmanager
 from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import JSONResponse
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app import workflow
 from app.db import create_schema, get_session
-from app.models import STATUSES, ServiceRequest
+from app.models import STATUSES, AuditEvent, ServiceRequest
 from app.people import PEOPLE, Person, acting_as
-from app.schemas import ActionIn, RequestIn, RequestOut
+from app.schemas import ActionIn, EventOut, RequestIn, RequestOut
 
 
 @asynccontextmanager
@@ -69,6 +69,8 @@ def create_request(
         status="new",
     )
     session.add(request)
+    session.flush()  # gives the request its id for the event below
+    session.add(AuditEvent(request_id=request.id, action="created", actor=person.id, to_status="new"))
     session.commit()
     session.refresh(request)
     return _out(request, person)
@@ -105,12 +107,46 @@ def take_action(
     request = _find(session, request_id, lock=True)
     step = workflow.check(action, request.status, request.requested_by, person, body.note, body.priority)
 
-    request.status = step.to_status
+    note = body.note
     if action == "triage":
         request.priority = body.priority
+        note = f"Priority {body.priority}. {note}".strip()
     if step.decision:
         request.decided_by = person.id
         request.decided_at = func.now()
+    session.add(
+        AuditEvent(
+            request_id=request.id,
+            action=step.past,
+            actor=person.id,
+            from_status=request.status,
+            to_status=step.to_status,
+            note=note,
+        )
+    )
+    request.status = step.to_status
+    # The change and its audit event commit together, or not at all.
     session.commit()
     session.refresh(request)
     return _out(request, person)
+
+
+def _event_out(event: AuditEvent) -> EventOut:
+    return EventOut.model_validate({**event.__dict__, "request_title": event.request.title})
+
+
+@app.get("/api/requests/{request_id}/events", response_model=list[EventOut])
+def request_events(request_id: int, session: Session = Depends(get_session)) -> list[EventOut]:
+    _find(session, request_id)
+    query = select(AuditEvent).where(AuditEvent.request_id == request_id).order_by(AuditEvent.id)
+    query = query.options(joinedload(AuditEvent.request))
+    return [_event_out(e) for e in session.scalars(query)]
+
+
+@app.get("/api/audit", response_model=list[EventOut])
+def audit_log(limit: int = 100, session: Session = Depends(get_session)) -> list[EventOut]:
+    if not 1 <= limit <= 500:
+        raise HTTPException(422, "limit must be between 1 and 500")
+    # joinedload fetches each event's request in the same query, not one query per event.
+    query = select(AuditEvent).options(joinedload(AuditEvent.request)).order_by(AuditEvent.id.desc()).limit(limit)
+    return [_event_out(e) for e in session.scalars(query)]

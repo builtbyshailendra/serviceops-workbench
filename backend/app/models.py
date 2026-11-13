@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import CheckConstraint, DateTime, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DDL, BigInteger, CheckConstraint, DateTime, ForeignKey, String, Text, event, func
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base
 
@@ -48,3 +48,42 @@ class ServiceRequest(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class AuditEvent(Base):
+    """One row per change, written in the same transaction as the change itself.
+
+    A PostgreSQL trigger (below) refuses UPDATE and DELETE, so the history can
+    only grow. Requests can't be deleted either while they have events, because
+    of the foreign key.
+    """
+
+    __tablename__ = "audit_events"
+
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("service_requests.id"), index=True)
+    action: Mapped[str] = mapped_column(String(20))
+    actor: Mapped[str] = mapped_column(String(40))
+    from_status: Mapped[str | None] = mapped_column(String(20))
+    to_status: Mapped[str] = mapped_column(String(20))
+    note: Mapped[str] = mapped_column(Text, default="")
+    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+    request: Mapped[ServiceRequest] = relationship()
+
+
+# SQLAlchemy passes DDL strings through Python "%" formatting, so this SQL avoids "%" entirely.
+APPEND_ONLY = DDL(
+    """
+    CREATE OR REPLACE FUNCTION audit_events_append_only() RETURNS trigger AS $$
+    BEGIN
+      RAISE EXCEPTION USING MESSAGE = 'audit_events is append-only: ' || TG_OP || ' is not allowed';
+    END;
+    $$ LANGUAGE plpgsql;
+
+    CREATE TRIGGER audit_events_append_only
+      BEFORE UPDATE OR DELETE ON audit_events
+      FOR EACH ROW EXECUTE FUNCTION audit_events_append_only();
+    """
+)
+event.listen(AuditEvent.__table__, "after_create", APPEND_ONLY)
