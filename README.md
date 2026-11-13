@@ -27,3 +27,9 @@
 **Decision:** the API never edits or deletes events, but that's only a promise. A PostgreSQL trigger makes it a rule: any `UPDATE` or `DELETE` on `audit_events` fails with `audit_events is append-only`. The foreign key also stops a request with history from being deleted. Tests try all three straight against the database.
 
 **Learned:** the approval time on the request and the time on its audit event are exactly equal, not just close. PostgreSQL's `now()` is fixed at the start of a transaction, and both rows are written in one.
+
+### Step 4: intake form and request list
+
+**Built:** a Next.js frontend. The home page has a form to raise a request and a table of every request with its status, priority and who raised it. An "Acting as" picker in the header replaces a login; it's remembered in the browser and sent with every API call. Next.js passes `/api/*` on to FastAPI, so the browser sees one origin and there's no CORS setup.
+
+**Decision:** pinned TypeScript to 5.9. The newest release is TypeScript 7, the rewrite in Go, and I'd rather not find out mid-build whether Next.js's type checking works with it yet.

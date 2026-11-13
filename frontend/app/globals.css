@@ -1,0 +1,275 @@
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --text: #1c2430;
+  --muted: #5c6878;
+  --border: #dde2e8;
+  --accent: #2557d6;
+  --accent-text: #ffffff;
+  --ok-bg: #e6f4ea;
+  --ok-text: #1e6b34;
+  --error-bg: #fdecea;
+  --error-text: #a12a1f;
+  --new: #5c6878;
+  --triaged: #8a5a00;
+  --approved: #2557d6;
+  --rejected: #a12a1f;
+  --done: #1e6b34;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #12161c;
+    --surface: #1b2129;
+    --text: #e4e8ee;
+    --muted: #98a3b3;
+    --border: #2d3540;
+    --accent: #6f95ff;
+    --accent-text: #0d1117;
+    --ok-bg: #173022;
+    --ok-text: #8fd6a4;
+    --error-bg: #3a1a17;
+    --error-text: #ffaaa1;
+    --new: #98a3b3;
+    --triaged: #e2b453;
+    --approved: #6f95ff;
+    --rejected: #ff8a7e;
+    --done: #7fd196;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+a {
+  color: var(--accent);
+}
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 24px;
+  padding: 12px 24px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.top nav {
+  display: flex;
+  gap: 16px;
+  flex: 1;
+}
+
+.acting-as {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+main {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+footer {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 24px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+h1,
+h2 {
+  margin: 0 0 12px;
+  line-height: 1.25;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.15rem;
+}
+
+.two-columns {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 800px) {
+  .two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+form {
+  display: grid;
+  gap: 12px;
+}
+
+label {
+  display: grid;
+  gap: 4px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.acting-as {
+  font-weight: 400;
+}
+
+input,
+select,
+textarea,
+button {
+  font: inherit;
+}
+
+input,
+select,
+textarea {
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 400;
+}
+
+button {
+  padding: 8px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  background: var(--accent);
+  color: var(--accent-text);
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--accent);
+}
+
+button.danger {
+  border-color: var(--rejected);
+  background: transparent;
+  color: var(--rejected);
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--muted);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-new {
+  color: var(--new);
+}
+.badge-triaged {
+  color: var(--triaged);
+}
+.badge-approved {
+  color: var(--approved);
+}
+.badge-rejected {
+  color: var(--rejected);
+}
+.badge-done {
+  color: var(--done);
+}
+
+.banner {
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin: 12px 0 0;
+}
+
+.banner.ok {
+  background: var(--ok-bg);
+  color: var(--ok-text);
+}
+
+.banner.error {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.85rem;
+}
